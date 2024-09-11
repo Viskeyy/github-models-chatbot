@@ -1,13 +1,14 @@
 'use client';
 import { Select } from '@/components/Select';
+import { generateRandomId } from '@/utils/generateRandomId';
 import { requestToAzure } from '@/utils/requestToAzure';
 import { useState } from 'react';
 
-
 type Message = {
+    id: string;
     role: 'system' | 'user' | 'assistant';
     content: string;
-}
+};
 
 const models = [
     { label: 'AI21-Jamba-Instruct', value: 'AI21-Jamba-Instruct' },
@@ -49,8 +50,7 @@ export default function Home() {
 
         const response = await requestToAzure(currentModel);
 
-        setMessages([...messages, { role: 'assistant', content: '' }]);
-
+        setMessages([...messages, { role: 'assistant', content: '', id: generateRandomId() }]);
 
         for await (const event of response) {
             if (event.data === '[DONE]') return;
@@ -75,12 +75,12 @@ export default function Home() {
             <button onClick={sendToAI}>Request to Azure</button>
             <p>{AIResponse}</p>
             {messages.map((message, index) => (
-                <div key={index}>
+                <div key={message.id}>
                     <p>{message.role}</p>
                     <p>{message.content}</p>
                 </div>
             ))}
-            <input type="text" onChange={(e) => setMessages([...messages, { role: 'user', content: e.target.value }])} />
+            <input type='text' onChange={(e) => setMessages([...messages, { role: 'user', content: e.target.value, id: generateRandomId() }])} />
         </main>
     );
 }
