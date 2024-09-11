@@ -1,0 +1,24 @@
+{
+    "printWidth": 160,
+    "singleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "all",
+    "proseWrap": "never",
+    "jsxSingleQuote": true,
+    "overrides": [
+        {
+            "files": ".prettierrc",
+            "options": {
+                "parser": "json"
+            }
+        },
+        {
+            "files": "*.json",
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ],
+    "pluginSearchDirs": false,
+    "plugins": ["prettier-plugin-organize-imports", "prettier-plugin-packagejson", "prettier-plugin-tailwindcss"]
+}

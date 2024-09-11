@@ -1,101 +1,86 @@
-import Image from "next/image";
+'use client';
+import { Select } from '@/components/Select';
+import { requestToAzure } from '@/utils/requestToAzure';
+import { useState } from 'react';
 
+
+type Message = {
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+}
+
+const models = [
+    { label: 'AI21-Jamba-Instruct', value: 'AI21-Jamba-Instruct' },
+    { label: 'Mistral-large', value: 'Mistral-large' },
+    { label: 'Mistral-large-2407', value: 'Mistral-large-2407' },
+    { label: 'Mistral-nemo', value: 'Mistral-nemo' },
+    { label: 'Mistral-small', value: 'Mistral-small' },
+    { label: 'Phi-3-medium-128k-instruct', value: 'Phi-3-medium-128k-instruct' },
+    { label: 'Phi-3-medium-4k-instruct', value: 'Phi-3-medium-4k-instruct' },
+    { label: 'Phi-3-mini-128k-instruct', value: 'Phi-3-mini-128k-instruct' },
+    { label: 'Phi-3-mini-4k-instruct', value: 'Phi-3-mini-4k-instruct' },
+    { label: 'Phi-3-small-128k-instruct', value: 'Phi-3-small-128k-instruct' },
+    { label: 'Phi-3-small-8k-instruct', value: 'Phi-3-small-8k-instruct' },
+    { label: 'Phi-3.5-mini-instruct', value: 'Phi-3.5-mini-instruct' },
+    { label: 'ai21-jamba-1.5-large', value: 'ai21-jamba-1.5-large' },
+    { label: 'ai21-jamba-1.5-mini', value: 'ai21-jamba-1.5-mini' },
+    { label: 'cohere-command-r', value: 'cohere-command-r' },
+    { label: 'cohere-command-r-plus', value: 'cohere-command-r-plus' },
+    { label: 'cohere-embed-v3-english', value: 'cohere-embed-v3-english' },
+    { label: 'cohere-embed-v3-multilingual', value: 'cohere-embed-v3-multilingual' },
+    { label: 'gpt-4o', value: 'gpt-4o' },
+    { label: 'gpt-4o-mini', value: 'gpt-4o-mini' },
+    { label: 'meta-llama-3-70b-instruct', value: 'meta-llama-3-70b-instruct' },
+    { label: 'meta-llama-3-8b-instruct', value: 'meta-llama-3-8b-instruct' },
+    { label: 'meta-llama-3.1-405b-instruct', value: 'meta-llama-3.1-405b-instruct' },
+    { label: 'meta-llama-3.1-70b-instruct', value: 'meta-llama-3.1-70b-instruct' },
+    { label: 'meta-llama-3.1-8b-instruct', value: 'meta-llama-3.1-8b-instruct' },
+    { label: 'text-embedding-3-large', value: 'text-embedding-3-large' },
+    { label: 'text-embedding-3-small', value: 'text-embedding-3-small' },
+];
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const [currentModel, setCurrentModel] = useState('AI21-Jamba-Instruct');
+    const [AIResponse, setAIResponse] = useState('');
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    const sendToAI = async () => {
+        setIsLoading(true);
+
+        const response = await requestToAzure(currentModel);
+
+        setMessages([...messages, { role: 'assistant', content: '' }]);
+
+
+        for await (const event of response) {
+            if (event.data === '[DONE]') return;
+            for (const choice of JSON.parse(event.data).choices) {
+                setMessages((messages) => {
+                    const lastMessage = messages[messages.length - 1];
+                    const updatedMessage = {
+                        ...lastMessage,
+                        content: lastMessage.content + choice.delta.content ?? '',
+                    };
+                    return [...messages.slice(0, -1), updatedMessage];
+                });
+            }
+        }
+
+        setIsLoading(false);
+    };
+
+    return (
+        <main>
+            <Select options={models} placeholder='Select a model' onChange={(value) => setCurrentModel(value)} />
+            <button onClick={sendToAI}>Request to Azure</button>
+            <p>{AIResponse}</p>
+            {messages.map((message, index) => (
+                <div key={index}>
+                    <p>{message.role}</p>
+                    <p>{message.content}</p>
+                </div>
+            ))}
+            <input type="text" onChange={(e) => setMessages([...messages, { role: 'user', content: e.target.value }])} />
+        </main>
+    );
 }
