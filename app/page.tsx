@@ -2,7 +2,6 @@
 import { Input } from '@/components/Input';
 import { Select } from '@/components/Select';
 import { generateRandomId } from '@/utils/generateRandomId';
-import { requestToAzure } from '@/utils/requestToAzure';
 import { useEffect, useState } from 'react';
 import Markdown from 'react-markdown';
 
@@ -49,28 +48,67 @@ export default function Home() {
     const submitMessages = async (messages: Message[]) => {
         setIsLoading(true);
 
-        const response = await requestToAzure(
-            currentModel,
-            messages.map((message) => ({ role: message.role, content: message.content })),
-        );
+        try {
+            const response = await fetch('/api/requestAzure', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    modelName: currentModel,
+                    messages: messages.map((message) => ({
+                        role: message.role,
+                        content: message.content,
+                    })),
+                }),
+            });
 
-        setMessages([...messages, { role: 'assistant', content: '', id: generateRandomId() }]);
-
-        for await (const event of response) {
-            if (event.data === '[DONE]') return;
-            for (const choice of JSON.parse(event.data).choices) {
-                setMessages((messages) => {
-                    const lastMessage = messages[messages.length - 1];
-                    const updatedMessage = {
-                        ...lastMessage,
-                        content: lastMessage.content + (choice.delta.content ?? ''),
-                    };
-                    return [...messages.slice(0, -1), updatedMessage];
-                });
+            if (!response.ok) {
+                const error = await response.json();
+                console.error(error);
+                throw new Error(error.message);
             }
-        }
 
-        setIsLoading(false);
+            setMessages([...messages, { role: 'assistant', content: '', id: generateRandomId() }]);
+
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('Response body is not readable');
+
+            let assistantMessage = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = new TextDecoder().decode(value);
+                const lines = chunk.split('\n\n').filter((line) => line.trim().startsWith('data: '));
+
+                console.log(chunk, 'chunk');
+                console.log(lines, 'lines');
+
+                for (const line of lines) {
+                    const jsonStr = line.replace(/^data: /, '').trim();
+
+                    if (jsonStr === '[DONE]') return;
+                    const data = JSON.parse(jsonStr);
+                    for (const choice of data.choices) {
+                        if (choice.delta?.content) {
+                            assistantMessage += choice.delta.content ?? '';
+                            setMessages((prevMessages) => {
+                                const lastMessage = prevMessages[prevMessages.length - 1];
+                                const updatedMessage = {
+                                    ...lastMessage,
+                                    content: assistantMessage,
+                                };
+                                return [...prevMessages.slice(0, -1), updatedMessage];
+                            });
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const onInputSubmit = (role: 'user' | 'system') => (event: React.KeyboardEvent<HTMLInputElement>, inputValue: string) => {
@@ -96,9 +134,27 @@ export default function Home() {
         }
     }, [messages.length]);
 
+    // const temp = () => {
+    //     const chunk =
+    //         'data: {"choices":[],"created":0,"id":"","model":"","object":"","prompt_filter_results":[{"prompt_index":0,"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"jailbreak":{"filtered":false,"detected":false},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}}}]}\n\ndata: {"choices":[{"content_filter_results":{},"delta":{"content":"","role":"assistant"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":"Test"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" received"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":"!"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" How"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" can"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" I"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" assist"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" you"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" today"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":"?"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{},"delta":{},"finish_reason":"stop","index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: [DONE]\n\n';
+
+    //     const lines = chunk.split('\n\n').filter((line) => line.trim().startsWith('data: '));
+
+    //     lines.forEach((line) => {
+    //         const jsonStr = line.replace(/^data: /, '').trim();
+    //         if (jsonStr === '[DONE]') return;
+    //         const data = JSON.parse(jsonStr);
+    //         // console.log(data, 'json parsed data');
+    //         const content = data.choices[0]?.delta.content;
+    //         console.log(content, 'delta content');
+    //     });
+    // };
+
+    // temp();
+
     return (
         <main className='mx-auto w-[60vw] p-4'>
-            <div className='sticky top-4 flex justify-between bg-amber-400'>
+            <div className='sticky top-4 flex justify-between'>
                 <Select
                     label='Changing the model will clear the dialog'
                     options={models}
@@ -113,7 +169,7 @@ export default function Home() {
                 </div>
             </div>
 
-            <div className='max-h-[calc(100vh-10rem)] overflow-y-scroll bg-teal-600'>
+            <div className='h-[calc(100vh-10rem)] overflow-y-scroll'>
                 {messages.map((message) => (
                     <div key={message.id} className={`${message.role === 'user' ? 'text-right' : ''} p-4`}>
                         <p>{message.role}</p>
@@ -122,7 +178,7 @@ export default function Home() {
                 ))}
             </div>
 
-            <div className='sticky bottom-4 mx-auto w-3/4 bg-blue-500'>
+            <div className='sticky bottom-4 mx-auto w-3/4'>
                 <Input label='The maximum number of messages is 30' onKeyDown={onInputSubmit('user')} placeholder='Send a message' />
             </div>
         </main>
