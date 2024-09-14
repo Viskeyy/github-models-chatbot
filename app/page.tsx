@@ -72,36 +72,55 @@ export default function Home() {
             const reader = response.body?.getReader();
             if (!reader) throw new Error('Response body is not readable');
 
+            let buffer = '';
             let assistantMessage = '';
+            let pendingMessages: string[] = [];
+
+            const processBuffer = () => {
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop() ?? '';
+
+                for (const line of lines) {
+                    if (line.trim().startsWith('data: ')) {
+                        const jsonStr = line.replace(/^data: /, '').trim();
+                        if (jsonStr === '[DONE]') return;
+                        try {
+                            const data = JSON.parse(jsonStr);
+                            for (const choice of data.choices) {
+                                if (choice.delta?.content) {
+                                    assistantMessage += choice.delta.content;
+                                    pendingMessages.push(assistantMessage);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error parsing JSON:', error);
+                        }
+                    }
+                }
+            };
+
+            const processChunk = (chunk: string) => {
+                buffer += chunk;
+                processBuffer();
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const chunk = new TextDecoder().decode(value);
-                const lines = chunk.split('\n\n').filter((line) => line.trim().startsWith('data: '));
+                processChunk(chunk);
 
-                console.log(chunk, 'chunk');
-                console.log(lines, 'lines');
-
-                for (const line of lines) {
-                    const jsonStr = line.replace(/^data: /, '').trim();
-
-                    if (jsonStr === '[DONE]') return;
-                    const data = JSON.parse(jsonStr);
-                    for (const choice of data.choices) {
-                        if (choice.delta?.content) {
-                            assistantMessage += choice.delta.content ?? '';
-                            setMessages((prevMessages) => {
-                                const lastMessage = prevMessages[prevMessages.length - 1];
-                                const updatedMessage = {
-                                    ...lastMessage,
-                                    content: assistantMessage,
-                                };
-                                return [...prevMessages.slice(0, -1), updatedMessage];
-                            });
-                        }
-                    }
+                if (pendingMessages.length > 0) {
+                    setMessages((prevMessages) => {
+                        const lastMessage = prevMessages[prevMessages.length - 1];
+                        const updatedMessage = {
+                            ...lastMessage,
+                            content: pendingMessages.join(''),
+                        };
+                        return [...prevMessages.slice(0, -1), updatedMessage];
+                    });
+                    pendingMessages = [];
                 }
             }
         } catch (error) {
@@ -133,24 +152,6 @@ export default function Home() {
             window.location.reload();
         }
     }, [messages.length]);
-
-    // const temp = () => {
-    //     const chunk =
-    //         'data: {"choices":[],"created":0,"id":"","model":"","object":"","prompt_filter_results":[{"prompt_index":0,"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"jailbreak":{"filtered":false,"detected":false},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}}}]}\n\ndata: {"choices":[{"content_filter_results":{},"delta":{"content":"","role":"assistant"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":"Test"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" received"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":"!"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" How"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" can"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" I"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" assist"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" you"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":" today"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"},"violence":{"filtered":false,"severity":"safe"}},"delta":{"content":"?"},"finish_reason":null,"index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: {"choices":[{"content_filter_results":{},"delta":{},"finish_reason":"stop","index":0,"logprobs":null}],"created":1726221867,"id":"chatcmpl-A6xS7gBLP5I9vW49o4yaMaTnRFcXe","model":"gpt-4o-mini","object":"chat.completion.chunk","system_fingerprint":"fp_80a1bad4c7"}\n\ndata: [DONE]\n\n';
-
-    //     const lines = chunk.split('\n\n').filter((line) => line.trim().startsWith('data: '));
-
-    //     lines.forEach((line) => {
-    //         const jsonStr = line.replace(/^data: /, '').trim();
-    //         if (jsonStr === '[DONE]') return;
-    //         const data = JSON.parse(jsonStr);
-    //         // console.log(data, 'json parsed data');
-    //         const content = data.choices[0]?.delta.content;
-    //         console.log(content, 'delta content');
-    //     });
-    // };
-
-    // temp();
 
     return (
         <main className='mx-auto w-[60vw] p-4'>
