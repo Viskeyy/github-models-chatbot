@@ -74,7 +74,6 @@ export default function Home() {
 
             let buffer = '';
             let assistantMessage = '';
-            let pendingMessages: string[] = [];
 
             const processBuffer = () => {
                 const lines = buffer.split('\n\n');
@@ -89,7 +88,14 @@ export default function Home() {
                             for (const choice of data.choices) {
                                 if (choice.delta?.content) {
                                     assistantMessage += choice.delta.content;
-                                    pendingMessages.push(assistantMessage);
+                                    setMessages((prevMessages) => {
+                                        const lastMessage = prevMessages[prevMessages.length - 1];
+                                        const updatedMessage = {
+                                            ...lastMessage,
+                                            content: assistantMessage,
+                                        };
+                                        return [...prevMessages.slice(0, -1), updatedMessage];
+                                    });
                                 }
                             }
                         } catch (error) {
@@ -110,18 +116,6 @@ export default function Home() {
 
                 const chunk = new TextDecoder().decode(value);
                 processChunk(chunk);
-
-                if (pendingMessages.length > 0) {
-                    setMessages((prevMessages) => {
-                        const lastMessage = prevMessages[prevMessages.length - 1];
-                        const updatedMessage = {
-                            ...lastMessage,
-                            content: pendingMessages.join(''),
-                        };
-                        return [...prevMessages.slice(0, -1), updatedMessage];
-                    });
-                    pendingMessages = [];
-                }
             }
         } catch (error) {
             console.error('Error:', error);
