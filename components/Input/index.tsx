@@ -7,9 +7,10 @@ interface InputProps {
     onChange?: (value: string) => void;
     error?: string;
     onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>, value: string) => void;
+    disabled?: boolean;
 }
 
-export const Input = ({ label, placeholder = '', type = 'text', onChange, onKeyDown, error }: InputProps) => {
+export const Input = ({ label, placeholder = '', type = 'text', onChange, onKeyDown, error, disabled = false }: InputProps) => {
     const [value, setValue] = useState('');
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,6 +31,7 @@ export const Input = ({ label, placeholder = '', type = 'text', onChange, onKeyD
                     type={type}
                     id={label}
                     className={`w-full border bg-gray-800 ${error ? 'border-red-500' : 'border-gray-700'} rounded-md px-3 py-2 leading-tight text-gray-200 placeholder-gray-500 transition-colors duration-200 ease-in-out focus:border-indigo-500 focus:outline-none focus:ring focus:ring-indigo-500 focus:ring-opacity-50`}
+                    disabled={disabled}
                     placeholder={placeholder}
                     value={value}
                     onChange={handleChange}

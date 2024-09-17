@@ -180,7 +180,7 @@ export default function Home() {
             </div>
 
             <div className='sticky bottom-4 mx-auto w-3/4'>
-                <Input label='The maximum number of messages is 30' onKeyDown={onInputSubmit('user')} placeholder='Send a message' />
+                <Input label='The maximum number of messages is 30' onKeyDown={onInputSubmit('user')} placeholder='Send a message' disabled={isLoading} />
             </div>
         </main>
     );
