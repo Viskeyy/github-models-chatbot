@@ -74,7 +74,6 @@ export default function Home() {
 
             let buffer = '';
             let assistantMessage = '';
-            let pendingMessages: string[] = [];
 
             const processBuffer = () => {
                 const lines = buffer.split('\n\n');
@@ -83,13 +82,12 @@ export default function Home() {
                 for (const line of lines) {
                     if (line.trim().startsWith('data: ')) {
                         const jsonStr = line.replace(/^data: /, '').trim();
-                        if (jsonStr === '[DONE]') return;
+                        if (jsonStr === '[DONE]') return true;
                         try {
                             const data = JSON.parse(jsonStr);
                             for (const choice of data.choices) {
                                 if (choice.delta?.content) {
                                     assistantMessage += choice.delta.content;
-                                    pendingMessages.push(assistantMessage);
                                 }
                             }
                         } catch (error) {
@@ -97,31 +95,33 @@ export default function Home() {
                         }
                     }
                 }
+                return false;
             };
 
-            const processChunk = (chunk: string) => {
-                buffer += chunk;
-                processBuffer();
+            const decoder = new TextDecoder();
+            const updateMessageContent = (content: string) => {
+                setMessages((prevMessages) => {
+                    const lastMessage = prevMessages[prevMessages.length - 1];
+                    const updatedMessage = {
+                        ...lastMessage,
+                        content: content,
+                    };
+                    return [...prevMessages.slice(0, -1), updatedMessage];
+                });
             };
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = new TextDecoder().decode(value);
-                processChunk(chunk);
+                buffer += decoder.decode(value);
+                const isDone = processBuffer();
 
-                if (pendingMessages.length > 0) {
-                    setMessages((prevMessages) => {
-                        const lastMessage = prevMessages[prevMessages.length - 1];
-                        const updatedMessage = {
-                            ...lastMessage,
-                            content: pendingMessages.join(''),
-                        };
-                        return [...prevMessages.slice(0, -1), updatedMessage];
-                    });
-                    pendingMessages = [];
+                if (assistantMessage) {
+                    updateMessageContent(assistantMessage);
                 }
+
+                if (isDone) break;
             }
         } catch (error) {
             console.error('Error:', error);
