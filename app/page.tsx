@@ -2,7 +2,7 @@
 import { Input } from '@/components/Input';
 import { Select } from '@/components/Select';
 import { generateRandomId } from '@/utils/generateRandomId';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 
 type Message = {
@@ -41,6 +41,7 @@ const models = [
     { label: 'text-embedding-3-small', value: 'text-embedding-3-small' },
 ];
 export default function Home() {
+    const messagesRef = useRef<HTMLDivElement>(null);
     const [currentModel, setCurrentModel] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -151,6 +152,10 @@ export default function Home() {
             alert(`You have reached the maximum number of messages, Please reload the page to clear the messages.`);
             window.location.reload();
         }
+
+        if (messagesRef?.current) {
+            messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+        }
     }, [messages.length]);
 
     return (
@@ -170,7 +175,7 @@ export default function Home() {
                 </div>
             </div>
 
-            <div className='h-[calc(100vh-10rem)] overflow-y-scroll'>
+            <div className='h-[calc(100vh-10rem)] overflow-y-scroll' ref={messagesRef}>
                 {messages.map((message) => (
                     <div key={message.id} className={`${message.role === 'user' ? 'text-right' : ''} p-4`}>
                         <p>{message.role}</p>
