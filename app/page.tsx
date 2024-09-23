@@ -76,6 +76,17 @@ export default function Home() {
             let buffer = '';
             let assistantMessage = '';
 
+            const updateMessageContent = (content: string) => {
+                setMessages((prevMessages) => {
+                    const lastMessage = prevMessages[prevMessages.length - 1];
+                    const updatedMessage = {
+                        ...lastMessage,
+                        content: content,
+                    };
+                    return [...prevMessages.slice(0, -1), updatedMessage];
+                });
+            };
+
             const processBuffer = () => {
                 const lines = buffer.split('\n\n');
                 buffer = lines.pop() ?? '';
@@ -89,6 +100,7 @@ export default function Home() {
                             for (const choice of data.choices) {
                                 if (choice.delta?.content) {
                                     assistantMessage += choice.delta.content;
+                                    updateMessageContent(assistantMessage);
                                 }
                             }
                         } catch (error) {
@@ -100,16 +112,6 @@ export default function Home() {
             };
 
             const decoder = new TextDecoder();
-            const updateMessageContent = (content: string) => {
-                setMessages((prevMessages) => {
-                    const lastMessage = prevMessages[prevMessages.length - 1];
-                    const updatedMessage = {
-                        ...lastMessage,
-                        content: content,
-                    };
-                    return [...prevMessages.slice(0, -1), updatedMessage];
-                });
-            };
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -117,10 +119,6 @@ export default function Home() {
 
                 buffer += decoder.decode(value);
                 const isDone = processBuffer();
-
-                if (assistantMessage) {
-                    updateMessageContent(assistantMessage);
-                }
 
                 if (isDone) break;
             }
