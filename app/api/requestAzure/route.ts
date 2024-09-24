@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         if (response.status !== '200') return new NextResponse(JSON.stringify(response.body), { status: parseInt(response.status) });
 
         if (response.body) {
-            return new NextResponse(response.body, { status: 200 });
+            return new NextResponse(JSON.stringify(response.body), { status: 200 });
         } else {
             return new NextResponse(JSON.stringify({ error: 'No response body' }), { status: 500 });
         }

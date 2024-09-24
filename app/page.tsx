@@ -119,7 +119,7 @@ export default function Home() {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                buffer += decoder.decode(value);
+                buffer += JSON.parse(decoder.decode(value));
                 const isDone = processBuffer();
 
                 if (isDone) break;
