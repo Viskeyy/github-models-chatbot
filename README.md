@@ -27,13 +27,13 @@ To get started with the GitHub Models Web Application, follow these simple steps
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/github-models-web-app.git
+   git clone https://github.com/Viskeyy/github-models-chatbot.git
    ```
 
 2. Navigate to the project directory:
 
    ```bash
-   cd github-models-web-app
+   cd github-models-chatbot
    ```
 
 3. Install the dependencies:
