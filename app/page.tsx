@@ -92,20 +92,22 @@ export default function Home() {
                 buffer = lines.pop() ?? '';
 
                 for (const line of lines) {
-                    if (line.trim().startsWith('data: ')) {
-                        const jsonStr = line.replace(/^data: /, '').trim();
-                        if (jsonStr === '[DONE]') return true;
-                        try {
-                            const data = JSON.parse(jsonStr);
-                            for (const choice of data.choices) {
-                                if (choice.delta?.content) {
-                                    assistantMessage += choice.delta.content;
-                                    updateMessageContent(assistantMessage);
-                                }
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine.startsWith('data: ')) continue;
+
+                    const jsonStr = trimmedLine.replace(/^data: /, '');
+                    if (jsonStr === '[DONE]') return true;
+
+                    try {
+                        const data = JSON.parse(jsonStr);
+                        for (const choice of data.choices) {
+                            if (choice.delta?.content) {
+                                assistantMessage += choice.delta.content;
+                                updateMessageContent(assistantMessage);
                             }
-                        } catch (error) {
-                            console.error('Error parsing JSON:', error);
                         }
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
                     }
                 }
                 return false;
